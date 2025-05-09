@@ -44,7 +44,7 @@ public class PasswordCrackMultiThread {
     private static AtomicInteger crackedCount;
     private static AtomicBoolean allPasswordsCracked;
     private static int totalUsers;
-    private static List<UserEntry> users; // Shared user list
+    private static List<UserEntry> users;
 
     public static void main(String[] args) {
         if (args.length != 2) {

@@ -62,30 +62,65 @@ public class PasswordCrack {
             // Error messages already printed by loader functions if they returned null
             System.exit(1);
         }
-         if (dictionary.isEmpty()) {
-            System.err.println("Error: Dictionary is empty.");
+         if (dictionary.isEmpty() && users.isEmpty()) { // Allow empty dictionary if we crack all with usernames
+            System.err.println("Error: Both dictionary and password file are effectively empty or failed to load.");
             System.exit(1);
         }
         if (users.isEmpty()) {
             System.err.println("Error: No user entries loaded from password file.");
-            // Depending on requirements, this might not be a fatal error if the file is just empty.
-            // For this assignment, assume it's an issue if no users to crack.
             System.exit(1);
         }
         
         AtomicInteger crackedCount = new AtomicInteger(0);
         int totalUsers = users.size();
 
-        // Level 0: No Mangles
+        // New Stage 1: Try usernames directly
+        System.out.println("Attempting usernames as passwords...");
+        tryUsernamesAsPasswords(users, crackedCount, totalUsers);
+        if (crackedCount.get() == totalUsers) {
+            System.out.println("All passwords cracked.");
+            return;
+        }
+
+        // New Stage 2: Try mangled usernames
+        System.out.println("Attempting mangled usernames as passwords...");
+        tryMangledUsernames(users, crackedCount, totalUsers);
+        if (crackedCount.get() == totalUsers) {
+            System.out.println("All passwords cracked.");
+            return;
+        }
+        
+        if (dictionary.isEmpty()) {
+            System.err.println("Warning: Dictionary is empty. No further dictionary-based attacks can be performed.");
+            // Potentially exit or just note that remaining users couldn't be cracked if dictionary is required from here
+            if (crackedCount.get() < totalUsers) {
+                 System.out.println(crackedCount.get() + " out of " + totalUsers + " passwords cracked. Remaining could not be attempted without a dictionary.");
+            }
+            return;
+        }
+
+
+        // Stage 3: Level 0 Dictionary (No Mangles)
+        System.out.println("Attempting dictionary words (no mangles)...");
         tryWordCombinations(dictionary, users, crackedCount, totalUsers, 0);
-        if (crackedCount.get() == totalUsers) return;
+        if (crackedCount.get() == totalUsers) {
+            System.out.println("All passwords cracked.");
+            return;
+        }
 
-        // Level 1: One Mangle
+        // Stage 4: Level 1 Dictionary (One Mangle)
+        System.out.println("Attempting dictionary words (1 mangle)...");
         tryWordCombinations(dictionary, users, crackedCount, totalUsers, 1);
-        if (crackedCount.get() == totalUsers) return;
+        if (crackedCount.get() == totalUsers) {
+            System.out.println("All passwords cracked.");
+            return;
+        }
 
-        // Level 2: Two Mangles
+        // Stage 5: Level 2 Dictionary (Two Mangles)
+        System.out.println("Attempting dictionary words (2 mangles)...");
         tryWordCombinations(dictionary, users, crackedCount, totalUsers, 2);
+
+        System.out.println("Password cracking attempt finished. " + crackedCount.get() + " out of " + totalUsers + " passwords cracked.");
     }
 
     private static List<String> loadDictionary(String filePath) {
@@ -120,6 +155,50 @@ public class PasswordCrack {
         return entries;
     }
 
+    private static void tryUsernamesAsPasswords(List<UserEntry> users, AtomicInteger crackedCount, int totalUsers) {
+        for (UserEntry user : users) {
+            if (user.isCracked) continue;
+            if (crackedCount.get() == totalUsers) return;
+
+            String currentGuess = user.username;
+            if (currentGuess == null || currentGuess.isEmpty()) continue;
+
+            String encryptedGuess = jcrypt.crypt(user.salt, currentGuess);
+            if (user.encryptedPassword.equals(encryptedGuess)) {
+                System.out.println(currentGuess); 
+                user.isCracked = true;
+                crackedCount.incrementAndGet();
+            }
+        }
+    }
+
+    private static void tryMangledUsernames(List<UserEntry> users, AtomicInteger crackedCount, int totalUsers) {
+        for (UserEntry user : users) {
+            if (user.isCracked) continue;
+            if (crackedCount.get() == totalUsers) return;
+
+            String baseUsername = user.username;
+            if (baseUsername == null || baseUsername.isEmpty()) continue;
+
+            List<String> mangledUsernames = applyAllMangles(baseUsername);
+
+            for (String currentGuess : mangledUsernames) {
+                if (user.isCracked) break; // Password for this user found by another guess/thread
+                if (crackedCount.get() == totalUsers) return;
+                
+                if (currentGuess == null || currentGuess.isEmpty()) continue;
+
+                String encryptedGuess = jcrypt.crypt(user.salt, currentGuess);
+                if (user.encryptedPassword.equals(encryptedGuess)) {
+                    System.out.println(currentGuess);
+                    user.isCracked = true;
+                    crackedCount.incrementAndGet();
+                    break; // Move to the next user
+                }
+            }
+        }
+    }
+
     private static void tryWordCombinations(List<String> dictionary, List<UserEntry> users, AtomicInteger crackedCount, int totalUsers, int mangleLevel) {
         for (String baseWord : dictionary) {
             if (baseWord == null || baseWord.isEmpty()) continue; // Skip empty words in dictionary
@@ -138,10 +217,6 @@ public class PasswordCrack {
             }
 
             for (String currentGuess : wordsToTry) {
-                // Null/empty guesses are not useful as jcrypt uses first 8 chars.
-                // An empty string as a password would hash to a specific value if the dictionary word itself was empty
-                // and not skipped, or if a mangle produced an empty string AND we allowed it.
-                // Current applyAllMangles filters out empty strings.
                 if (currentGuess == null || currentGuess.isEmpty()) continue;
 
                 for (UserEntry user : users) {
@@ -155,9 +230,9 @@ public class PasswordCrack {
                         if (crackedCount.get() == totalUsers) return; 
                     }
                 }
-                 if (crackedCount.get() == totalUsers) return;
+                if (crackedCount.get() == totalUsers) return;
             }
-             if (crackedCount.get() == totalUsers) return;
+            if (crackedCount.get() == totalUsers) return;
         }
     }
 
@@ -221,8 +296,6 @@ public class PasswordCrack {
         for (int i = 0; i < word.length(); i++) {
             char c = word.charAt(i);
             if (Character.isLetter(c)) {
-                // firstCharUpperPattern = true for StRiNg (0=U, 1=L, 2=U...)
-                // firstCharUpperPattern = false for sTrInG (0=L, 1=U, 2=L...)
                 boolean shouldBeUpper = (i % 2 == 0) ? firstCharUpperPattern : !firstCharUpperPattern;
                 if (shouldBeUpper) {
                     sb.append(Character.toUpperCase(c));

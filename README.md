@@ -25,12 +25,6 @@ To compile a specific program, navigate to the directory containing the Java fil
 javac PasswordCrack.java jcrypt.java
 ```
 
-### Compiling `PasswordCrackDepthFirst.java` (Depth-First)
-
-```bash
-javac PasswordCrackDepthFirst.java jcrypt.java
-```
-
 ### Compiling `PasswordCrackMultiThread.java` (Multithreaded Breadth-First)
 
 ```bash
