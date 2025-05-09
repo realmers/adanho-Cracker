@@ -75,23 +75,18 @@ public class PasswordCrack {
         int totalUsers = users.size();
 
         // New Stage 1: Try usernames directly
-        System.out.println("Attempting usernames as passwords...");
         tryUsernamesAsPasswords(users, crackedCount, totalUsers);
         if (crackedCount.get() == totalUsers) {
-            System.out.println("All passwords cracked.");
             return;
         }
 
         // New Stage 2: Try mangled usernames
-        System.out.println("Attempting mangled usernames as passwords...");
         tryMangledUsernames(users, crackedCount, totalUsers);
         if (crackedCount.get() == totalUsers) {
-            System.out.println("All passwords cracked.");
             return;
         }
         
         if (dictionary.isEmpty()) {
-            System.err.println("Warning: Dictionary is empty. No further dictionary-based attacks can be performed.");
             // Potentially exit or just note that remaining users couldn't be cracked if dictionary is required from here
             if (crackedCount.get() < totalUsers) {
                  System.out.println(crackedCount.get() + " out of " + totalUsers + " passwords cracked. Remaining could not be attempted without a dictionary.");
@@ -101,26 +96,20 @@ public class PasswordCrack {
 
 
         // Stage 3: Level 0 Dictionary (No Mangles)
-        System.out.println("Attempting dictionary words (no mangles)...");
         tryWordCombinations(dictionary, users, crackedCount, totalUsers, 0);
         if (crackedCount.get() == totalUsers) {
-            System.out.println("All passwords cracked.");
             return;
         }
 
         // Stage 4: Level 1 Dictionary (One Mangle)
-        System.out.println("Attempting dictionary words (1 mangle)...");
         tryWordCombinations(dictionary, users, crackedCount, totalUsers, 1);
         if (crackedCount.get() == totalUsers) {
-            System.out.println("All passwords cracked.");
             return;
         }
 
         // Stage 5: Level 2 Dictionary (Two Mangles)
-        System.out.println("Attempting dictionary words (2 mangles)...");
         tryWordCombinations(dictionary, users, crackedCount, totalUsers, 2);
 
-        System.out.println("Password cracking attempt finished. " + crackedCount.get() + " out of " + totalUsers + " passwords cracked.");
     }
 
     private static List<String> loadDictionary(String filePath) {
