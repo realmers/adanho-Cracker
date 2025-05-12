@@ -44,7 +44,7 @@ public class PasswordCrack {
         }
     }
 
-    public static void Main(String[] args) {
+    public static void main(String[] args) {
         if (args.length != 2) {
             System.err.println("Usage: java PasswordCrack <dictionary_file> <password_file>");
             System.exit(1);
